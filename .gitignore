@@ -1,0 +1,5 @@
+.idea
+dumps
+*.exe
+_*.go
+*~
