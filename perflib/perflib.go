@@ -109,11 +109,10 @@
 package perflib
 
 import (
-	"log"
-
 	"bytes"
 	"encoding/binary"
 	"io"
+	"log"
 	"syscall"
 	"unsafe"
 )
@@ -322,20 +321,8 @@ func QueryPerformanceData(query string) ([]*PerfObject, error) {
 		if obj.NumInstances <= 0 {
 			blockOffset := objOffset + int64(obj.DefinitionLength)
 			r.Seek(blockOffset, io.SeekStart)
-			block := new(perfCounterBlock)
-			block.BinaryReadFrom(r)
 
-			counters := make([]*PerfCounter, 0, len(counterDefs))
-
-			for _, counterDef := range counterDefs {
-				valueOffset := blockOffset + int64(counterDef.rawData.CounterOffset)
-				value := convertCounterValue(counterDef.rawData, buffer, valueOffset)
-
-				counters = append(counters, &PerfCounter{
-					Value: value,
-					Def:   counterDef,
-				})
-			}
+			_, counters := parseCounterBlock(buffer, r, blockOffset, counterDefs)
 
 			instances[0] = &PerfInstance{
 				Name:            "",
@@ -353,34 +340,16 @@ func QueryPerformanceData(query string) ([]*PerfObject, error) {
 				inst.BinaryReadFrom(r)
 
 				name, _ := readUTF16StringAtPos(r, instOffset+int64(inst.NameOffset), inst.NameLength)
-
-				blockOffset := instOffset + int64(inst.ByteLength)
-				r.Seek(blockOffset, io.SeekStart)
-				block := new(perfCounterBlock)
-				block.BinaryReadFrom(r)
-
-				counters := make([]*PerfCounter, len(counterDefs))
-
-				for i, counterDef := range counterDefs {
-					valueOffset := blockOffset + int64(counterDef.rawData.CounterOffset)
-					value := convertCounterValue(counterDef.rawData, buffer, valueOffset)
-
-					counters[i] = &PerfCounter{
-						Value: value,
-						Def:   counterDef,
-					}
-				}
-
-				// TODO: duplicate code
+				pos := instOffset + int64(inst.ByteLength)
+				offset, counters := parseCounterBlock(buffer, r, pos, counterDefs)
 
 				instances[i] = &PerfInstance{
 					Name:            name,
 					Counters:        counters,
 					rawData:         inst,
-					rawCounterBlock: block,
 				}
 
-				instOffset = blockOffset + int64(block.ByteLength)
+				instOffset = pos + offset
 			}
 		}
 
@@ -389,6 +358,26 @@ func QueryPerformanceData(query string) ([]*PerfObject, error) {
 	}
 
 	return objects, nil
+}
+
+func parseCounterBlock(b []byte, r io.ReadSeeker, pos int64, defs []*PerfCounterDef) (int64, []*PerfCounter) {
+	r.Seek(pos, io.SeekStart)
+	block := new(perfCounterBlock)
+	block.BinaryReadFrom(r)
+
+	counters := make([]*PerfCounter, len(defs))
+
+	for i, def := range defs {
+		valueOffset := pos + int64(def.rawData.CounterOffset)
+		value := convertCounterValue(def.rawData, b, valueOffset)
+
+		counters[i] = &PerfCounter{
+			Value: value,
+			Def:   def,
+		}
+	}
+
+	return int64(block.ByteLength), counters
 }
 
 func convertCounterValue(counterDef *perfCounterDefinition, buffer []byte, valueOffset int64) (value int64) {
