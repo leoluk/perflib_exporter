@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"perflib_exporter/perflib"
 	"strings"
 	"os"
 	"log"
+
+	"github.com/leoluk/perflib_exporter/perflib"
 )
 
 func main() {
