@@ -8,8 +8,7 @@
 	or formatting them, which is exactly what you want for, say, a Prometheus exporter
 	(not so much for a GUI like Windows Performance Monitor).
 
-	Its overhead is much lower than the high-level libraries - querying and parsing all
-	~20k counters in "Global" takes about ~17ms.
+	Its overhead is much lower than the high-level libraries.
 
 	It operates on the same set of perflib providers as PDH and WMI. See this document
 	for more details on the relationship between the different libraries:
@@ -37,12 +36,12 @@
 	Windows has a system-wide performance counter mechanism. Most performance counters
 	are stored as actual counters, not gauges (with some exceptions).
 	There's additional metadata which defines how the counter should be presented to the user
-	(for example, as a calculated rate). This library disregards all of the metadata.
+	(for example, as a calculated rate). This library disregards all of the display metadata.
 
 	At the top level, there's a number of performance counter objects.
-	Each object has counter defintions, which contain the metadata for a particular
+	Each object has counter definitions, which contain the metadata for a particular
 	counter, and either zero or multiple instances. We hide the fact that there are
-	objects with no instances, and simply return a single null instance in order to simplify things.
+	objects with no instances, and simply return a single null instance.
 
 	There's one counter per counter definition and instance (or the object itself, if
 	there are no instances).
@@ -91,6 +90,9 @@
 		1/28/2018 10:18:00 PM     \\DEV\wsman quota statistics(winrmservice)\process id :
 								  928
 
+		>  (Get-Counter '\Process(Idle)\% Processor Time').CounterSamples[0] | Format-List *
+		[..detailed output...]
+
 	Data for some of the objects is also available through WMI:
 
 		> Get-CimInstance Win32_PerfRawData_Counters_WSManQuotaStatistics
@@ -113,6 +115,7 @@ import (
 	"encoding/binary"
 	"io"
 	"log"
+	"sort"
 	"syscall"
 	"unsafe"
 )
@@ -153,7 +156,19 @@ type PerfCounterDef struct {
 	HelpText      string
 	HelpTextIndex uint
 
-	rawData *perfCounterDefinition
+	// For debugging - subject to removal. CounterType is a perflib
+	// implementation detail (see perflib.h) and should not be used outside
+	// of this package. We export it so we can show it on /dump.
+	CounterType uint32
+
+	// PERF_TYPE_COUNTER (otherwise, it's a gauge)
+	IsCounter bool
+	// PERF_COUNTER_BASE (base value of a multi-value fraction)
+	IsBaseValue bool
+	// PERF_TIMER_100NS
+	IsNanosecondCounter bool
+
+	rawData     *perfCounterDefinition
 }
 
 type PerfCounter struct {
@@ -177,7 +192,7 @@ func queryRawData(query string) ([]byte, error) {
 	case "Global":
 		bufLen = 400000
 	case "Costly":
-		bufLen = 1000000
+		bufLen = 2000000
 	default:
 		// TODO: depends on the number of values requested
 		// need make an educated guess
@@ -315,6 +330,12 @@ func QueryPerformanceData(query string) ([]*PerfObject, error) {
 				HelpText:      def.LookupHelp(),
 				HelpTextIndex: uint(def.CounterHelpTitleIndex),
 				rawData:       def,
+
+				CounterType: def.CounterType,
+
+				IsCounter:   def.CounterType&0x400 > 0,
+				IsBaseValue: def.CounterType&0x20000000 > 0,
+				IsNanosecondCounter: def.CounterType&0x00100000 > 0,
 			}
 		}
 
@@ -344,9 +365,9 @@ func QueryPerformanceData(query string) ([]*PerfObject, error) {
 				offset, counters := parseCounterBlock(buffer, r, pos, counterDefs)
 
 				instances[i] = &PerfInstance{
-					Name:            name,
-					Counters:        counters,
-					rawData:         inst,
+					Name:     name,
+					Counters: counters,
+					rawData:  inst,
 				}
 
 				instOffset = pos + offset
@@ -406,4 +427,13 @@ func convertCounterValue(counterDef *perfCounterDefinition, buffer []byte, value
 	}
 
 	return
+}
+
+// Sort slice of objects by index. This is useful for displaying
+// a human-readable list or dump, but unnecessary otherwise.
+func SortObjects(p []*PerfObject) {
+	sort.Slice(p, func(i, j int) bool {
+		return p[i].NameIndex < p[j].NameIndex
+	})
+
 }
