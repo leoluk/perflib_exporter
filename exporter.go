@@ -20,6 +20,7 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 
 	"github.com/leoluk/perflib_exporter/collector"
+	"github.com/leoluk/perflib_exporter/perflib"
 )
 
 // PerflibExporter implements the prometheus.Collector interface.
@@ -165,11 +166,17 @@ func main() {
 			"telemetry.path", "URL path for surfacing collected metrics.").Default("/metrics").String()
 
 		perfObjects = kingpin.Flag(
-			"perflib.objects", "List of perflib objects to queryBuf (defaults to a built-in list)").Uint32List()
+			"perflib.objects", "List of perflib object indices to queryBuf (defaults to a built-in list)").Uint32List()
 		perfObjectsAdd = kingpin.Flag(
-			"perflib.objects.add", "List of perflib objects to add to list").Uint32List()
+			"perflib.objects.add", "List of perflib object indices to add to list").Uint32List()
 		perfObjectsRemove = kingpin.Flag(
-			"perflib.objects.remove", "List of perflib objects to remove from list").Uint32List()
+			"perflib.objects.remove", "List of perflib object indices to remove from list").Uint32List()
+		perfObjectsNames = kingpin.Flag(
+			"perflib.objects.names", "List of perflib object names to queryBuf").Strings()
+		perfObjectsNamesAdd = kingpin.Flag(
+			"perflib.objects.names.add", "List of perflib object names to add to list").Strings()
+		perfObjectsNamesRemove = kingpin.Flag(
+			"perflib.objects.names.remove", "List of perflib object names to remove from list").Strings()
 	)
 
 	authTokens = kingpin.Flag(
@@ -182,6 +189,19 @@ func main() {
 	kingpin.Parse()
 
 	// Prepare perflib queryBuf
+	var queryBuf bytes.Buffer
+
+	// Get all existing objects if one of the perflib.objects.names flags was used
+	var objects []*perflib.PerfObject
+	if len(*perfObjectsNames) > 0 || len(*perfObjectsNamesAdd) > 0 || len(*perfObjectsNamesRemove) > 0 {
+		o, err := perflib.QueryPerformanceData("Global")
+		if err != nil {
+			panic(err)
+		}
+		objects = o
+	}
+
+	*perfObjects = append(*perfObjects, objectNamesToIndices(perfObjectsNames, objects)...)
 
 	if len(*perfObjects) == 0 {
 		perfObjects = &defaultPerflibObjects
@@ -191,12 +211,14 @@ func main() {
 		*perfObjects = append(*perfObjects, n)
 	}
 
-	var queryBuf bytes.Buffer
+	*perfObjects = append(*perfObjects, objectNamesToIndices(perfObjectsNamesAdd, objects)...)
+	*perfObjectsRemove = append(*perfObjectsRemove, objectNamesToIndices(perfObjectsNamesRemove, objects)...)
 
+	loopPerfObjects:
 	for _, n := range *perfObjects {
 		for _, r := range *perfObjectsRemove {
 			if n == r {
-				continue
+				continue loopPerfObjects
 			}
 		}
 
@@ -207,7 +229,6 @@ func main() {
 	log.Info("perflib query: ", defaultQuery)
 
 	// Initialize Windows service, if necessary
-
 	isInteractive, err := svc.IsAnInteractiveSession()
 	if err != nil {
 		log.Fatal(err)
@@ -219,7 +240,6 @@ func main() {
 	}
 
 	// Initialize the exporter
-
 	nodeCollector := PerflibExporter{collectors: map[string]collector.Collector{
 		"perflib": collector.NewPerflibCollector(defaultQuery),
 	}}
@@ -244,6 +264,21 @@ func main() {
 			break
 		}
 	}
+}
+
+// objectNamesToIndices converts a slice of perflib object Name values to a slice of perflib NameIndex values
+func objectNamesToIndices(names *[]string, objectDefinitions []*perflib.PerfObject) (indices []uint32) {
+	outerloop:
+	for _, p := range *names {
+		for _, o := range objectDefinitions {
+			if p == o.Name {
+				indices = append(indices, uint32(o.NameIndex))
+				continue outerloop
+			}
+		}
+	}
+
+	return indices
 }
 
 func healthCheck(w http.ResponseWriter, r *http.Request) {
