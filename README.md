@@ -56,12 +56,19 @@ http://127.0.0.1:9432/dump?query=2
           --telemetry.path="/metrics"
                                     URL path for surfacing collected metrics.
           --perflib.objects=PERFLIB.OBJECTS ...
-                                    List of perflib objects to queryBuf (defaults to
-                                    a built-in list)
+                                    List of perflib object indices to queryBuf
+                                    (defaults to a built-in list)
           --perflib.objects.add=PERFLIB.OBJECTS.ADD ...
-                                    List of perflib objects to add to list
+                                    List of perflib object indices to add to list
           --perflib.objects.remove=PERFLIB.OBJECTS.REMOVE ...
-                                    List of perflib objects to remove from list
+                                    List of perflib object indices to remove from
+                                    list
+          --perflib.objects.names=PERFLIB.OBJECTS.NAMES ...
+                                    List of perflib object names to queryBuf
+          --perflib.objects.names.add=PERFLIB.OBJECTS.NAMES.ADD ...
+                                    List of perflib object names to add to list
+          --perflib.objects.names.remove=PERFLIB.OBJECTS.NAMES.REMOVE ...
+                                    List of perflib object names to remove from list
           --telemetry.auth=TELEMETRY.AUTH ...
                                     List of valid bearer tokens. Defaults to none
                                     (no auth)
