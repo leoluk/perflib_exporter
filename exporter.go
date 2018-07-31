@@ -201,17 +201,7 @@ func main() {
 		objects = o
 	}
 
-	if perfObjectsNames != nil && len(*perfObjectsNames) > 0 {
-		loopPerfObjectsNames:
-		for _, p := range *perfObjectsNames {
-			for _, o := range objects {
-				if p == o.Name {
-					*perfObjects = append(*perfObjects, uint32(o.NameIndex))
-					continue loopPerfObjectsNames
-				}
-			}
-		}
-	}
+	*perfObjects = append(*perfObjects, objectNamesToIndices(perfObjectsNames, objects)...)
 
 	if len(*perfObjects) == 0 {
 		perfObjects = &defaultPerflibObjects
@@ -221,25 +211,8 @@ func main() {
 		*perfObjects = append(*perfObjects, n)
 	}
 
-	loopPerfObjectsNamesAdd:
-	for _, p := range *perfObjectsNamesAdd {
-		for _, o := range objects {
-			if p == o.Name {
-				*perfObjects = append(*perfObjects, uint32(o.NameIndex))
-				continue loopPerfObjectsNamesAdd
-			}
-		}
-	}
-
-	loopPerfObjectsNamesRemove:
-	for _, p := range *perfObjectsNamesRemove {
-		for _, o := range objects {
-			if p == o.Name {
-				*perfObjectsRemove = append(*perfObjectsRemove, uint32(o.NameIndex))
-				continue loopPerfObjectsNamesRemove
-			}
-		}
-	}
+	*perfObjects = append(*perfObjects, objectNamesToIndices(perfObjectsNamesAdd, objects)...)
+	*perfObjectsRemove = append(*perfObjectsRemove, objectNamesToIndices(perfObjectsNamesRemove, objects)...)
 
 	loopPerfObjects:
 	for _, n := range *perfObjects {
@@ -291,6 +264,21 @@ func main() {
 			break
 		}
 	}
+}
+
+// objectNamesToIndices converts a slice of perflib object Name values to a slice of perflib NameIndex values
+func objectNamesToIndices(names *[]string, objectDefinitions []*perflib.PerfObject) (indices []uint32) {
+	outerloop:
+	for _, p := range *names {
+		for _, o := range objectDefinitions {
+			if p == o.Name {
+				indices = append(indices, uint32(o.NameIndex))
+				continue outerloop
+			}
+		}
+	}
+
+	return indices
 }
 
 func healthCheck(w http.ResponseWriter, r *http.Request) {
