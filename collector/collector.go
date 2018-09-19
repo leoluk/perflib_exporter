@@ -1,6 +1,8 @@
 package collector
 
 import (
+	"fmt"
+
 	"github.com/leoluk/perflib_exporter/perflib"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
@@ -47,12 +49,13 @@ func NewPerflibCollector(query string) (c PerflibCollector) {
 	for _, object := range objects {
 		for _, def := range object.CounterDefs {
 			name, desc := descFromCounterDef(*object, *def)
-			if _, ok := knownNames[name]; ok {
+			keyname := fmt.Sprintf("%s|%s", object.Name, name)
+			if _, ok := knownNames[keyname]; ok {
 				continue
 			}
 
 			c.perflibDescs[def.NameIndex] = desc
-			knownNames[name] = true
+			knownNames[keyname] = true
 		}
 	}
 
@@ -118,6 +121,7 @@ func (c PerflibCollector) Collect(ch chan<- prometheus.Metric) (err error) {
 				desc, ok := c.perflibDescs[counter.Def.NameIndex]
 
 				if !ok {
+					log.Debugf("missing metric description for counter %s -> %s -> %s", object.Name, instance.Name, counter.Def.Name)
 					continue
 				}
 
@@ -152,7 +156,7 @@ func (c PerflibCollector) Collect(ch chan<- prometheus.Metric) (err error) {
 					desc,
 					prometheus.CounterValue,
 					value,
-					labels...
+					labels...,
 				)
 
 				ch <- metric
