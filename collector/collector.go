@@ -22,13 +22,17 @@ type Collector interface {
 	Collect(ch chan<- prometheus.Metric) (err error)
 }
 
+type CounterKey struct {
+	ObjectIndex, CounterIndex uint
+}
+
 type PerflibCollector struct {
 	perflibQuery   string
 	perflibObjects []*perflib.PerfObject
-	perflibDescs   map[uint]*prometheus.Desc
+	perflibDescs   map[CounterKey]*prometheus.Desc
 }
 
-var countersPerDef map[uint]uint
+var countersPerDef map[CounterKey]uint
 
 func NewPerflibCollector(query string) (c PerflibCollector) {
 	c.perflibQuery = query
@@ -42,7 +46,7 @@ func NewPerflibCollector(query string) (c PerflibCollector) {
 	c.perflibObjects = objects
 	log.Debugf("Number of objects: %d", len(objects))
 
-	c.perflibDescs = make(map[uint]*prometheus.Desc)
+	c.perflibDescs = make(map[CounterKey]*prometheus.Desc)
 
 	knownNames := make(map[string]bool)
 
@@ -54,18 +58,20 @@ func NewPerflibCollector(query string) (c PerflibCollector) {
 				continue
 			}
 
-			c.perflibDescs[def.NameIndex] = desc
+			key := CounterKey{object.NameIndex, def.NameIndex}
+			c.perflibDescs[key] = desc
 			knownNames[keyname] = true
 		}
 	}
 
 	// TODO: we do not handle multi-value counters yet, so we count and remove them
-	countersPerDef = make(map[uint]uint)
+	countersPerDef = make(map[CounterKey]uint)
 
 	for _, object := range objects {
 		instance := object.Instances[0]
 		for _, counter := range instance.Counters {
-			countersPerDef[counter.Def.NameIndex] += 1
+			key := CounterKey{object.NameIndex, counter.Def.NameIndex}
+			countersPerDef[key] += 1
 		}
 	}
 
@@ -108,7 +114,9 @@ func (c PerflibCollector) Collect(ch chan<- prometheus.Metric) (err error) {
 					continue
 				}
 
-				if countersPerDef[counter.Def.NameIndex] > 1 {
+				key := CounterKey{object.NameIndex, counter.Def.NameIndex}
+
+				if countersPerDef[key] > 1 {
 					log.Debugf("multi counter %s -> %s -> %s", object.Name, instance.Name, counter.Def.Name)
 					continue
 				}
@@ -118,7 +126,7 @@ func (c PerflibCollector) Collect(ch chan<- prometheus.Metric) (err error) {
 					continue
 				}
 
-				desc, ok := c.perflibDescs[counter.Def.NameIndex]
+				desc, ok := c.perflibDescs[key]
 
 				if !ok {
 					log.Debugf("missing metric description for counter %s -> %s -> %s", object.Name, instance.Name, counter.Def.Name)
