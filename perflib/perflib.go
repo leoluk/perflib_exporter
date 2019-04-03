@@ -136,6 +136,8 @@ type PerfObject struct {
 	Instances     []*PerfInstance
 	CounterDefs   []*PerfCounterDef
 
+	Frequency int64
+
 	rawData *perfObjectType
 }
 
@@ -168,7 +170,7 @@ type PerfCounterDef struct {
 	// PERF_TIMER_100NS
 	IsNanosecondCounter bool
 
-	rawData     *perfCounterDefinition
+	rawData *perfCounterDefinition
 }
 
 type PerfCounter struct {
@@ -317,6 +319,7 @@ func QueryPerformanceData(query string) ([]*PerfObject, error) {
 			HelpTextIndex: uint(obj.ObjectHelpTitleIndex),
 			Instances:     instances,
 			CounterDefs:   counterDefs,
+			Frequency:     obj.PerfFreq,
 			rawData:       obj,
 		}
 
@@ -333,8 +336,8 @@ func QueryPerformanceData(query string) ([]*PerfObject, error) {
 
 				CounterType: def.CounterType,
 
-				IsCounter:   def.CounterType&0x400 > 0,
-				IsBaseValue: def.CounterType&0x20000000 > 0,
+				IsCounter:           def.CounterType&0x400 > 0,
+				IsBaseValue:         def.CounterType&0x20000000 > 0,
 				IsNanosecondCounter: def.CounterType&0x00100000 > 0,
 			}
 		}
