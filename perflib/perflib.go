@@ -178,6 +178,20 @@ type PerfCounter struct {
 	Def   *PerfCounterDef
 }
 
+type Logger func(string, ...interface{})
+
+var (
+	logDebugf Logger = log.Printf
+	logErrorf Logger = log.Printf
+)
+
+func SetDebugLogger(logger Logger) {
+	logDebugf = logger
+}
+func SetErrorLogger(logger Logger) {
+	logErrorf = logger
+}
+
 // Error value returned by RegQueryValueEx if the buffer isn't sufficiently large
 const errorMoreData = syscall.Errno(234)
 
@@ -206,7 +220,8 @@ func queryRawData(query string) ([]byte, error) {
 	name, err := syscall.UTF16PtrFromString(query)
 
 	if err != nil {
-		panic(err)
+		logErrorf("Could not encode query string: %v", err)
+		return nil, err
 	}
 
 	for {
@@ -221,14 +236,16 @@ func queryRawData(query string) ([]byte, error) {
 			&bufLen)
 
 		if err == errorMoreData {
-			log.Printf("WARNING: errorMoreData received with buffer length %d (%s)", len(buffer), query)
+			logDebugf("Got errorMoreData with buffer length %d (%s)", len(buffer), query)
 			newBuffer := make([]byte, len(buffer)+16384)
 			copy(newBuffer, buffer)
 			buffer = newBuffer
 			continue
 		} else if err != nil {
 			if errno, ok := err.(syscall.Errno); ok {
-				log.Println("ReqQueryValueEx: ", uint(errno), err)
+				logErrorf("ReqQueryValueEx: %d %v", uint(errno), err)
+			} else {
+				logErrorf("ReqQueryValueEx: %v", err)
 			}
 
 			return nil, err
