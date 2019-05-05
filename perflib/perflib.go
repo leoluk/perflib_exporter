@@ -114,7 +114,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"io"
-	"log"
+	"fmt"
 	"sort"
 	"syscall"
 	"unsafe"
@@ -206,7 +206,7 @@ func queryRawData(query string) ([]byte, error) {
 	name, err := syscall.UTF16PtrFromString(query)
 
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("failed to encode query string: %v", err)
 	}
 
 	for {
@@ -221,14 +221,13 @@ func queryRawData(query string) ([]byte, error) {
 			&bufLen)
 
 		if err == errorMoreData {
-			log.Printf("WARNING: errorMoreData received with buffer length %d (%s)", len(buffer), query)
 			newBuffer := make([]byte, len(buffer)+16384)
 			copy(newBuffer, buffer)
 			buffer = newBuffer
 			continue
 		} else if err != nil {
 			if errno, ok := err.(syscall.Errno); ok {
-				log.Println("ReqQueryValueEx: ", uint(errno), err)
+				return nil, fmt.Errorf("ReqQueryValueEx failed: %v errno %d", err, uint(errno))
 			}
 
 			return nil, err
