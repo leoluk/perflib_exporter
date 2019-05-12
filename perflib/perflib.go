@@ -335,9 +335,9 @@ func QueryPerformanceData(query string) ([]*PerfObject, error) {
 
 				CounterType: def.CounterType,
 
-				IsCounter:           def.CounterType&0x400 > 0,
-				IsBaseValue:         def.CounterType&0x20000000 > 0,
-				IsNanosecondCounter: def.CounterType&0x00100000 > 0,
+				IsCounter:           def.CounterType&0x400 == 0x400,
+				IsBaseValue:         def.CounterType&0x00030000 == 0x00030000,
+				IsNanosecondCounter: def.CounterType&0x00100000 == 0x00100000,
 			}
 		}
 
