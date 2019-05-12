@@ -113,9 +113,10 @@ package perflib
 import (
 	"bytes"
 	"encoding/binary"
-	"io"
 	"fmt"
+	"io"
 	"sort"
+	"strings"
 	"syscall"
 	"unsafe"
 )
@@ -181,6 +182,11 @@ type PerfCounter struct {
 // Error value returned by RegQueryValueEx if the buffer isn't sufficiently large
 const errorMoreData = syscall.Errno(234)
 
+var (
+	bufLenGlobal = uint32(400000)
+	bufLenCostly = uint32(2000000)
+)
+
 // Queries the performance counter buffer using RegQueryValueEx, returning raw bytes. See:
 // https://msdn.microsoft.com/de-de/library/windows/desktop/aa373219(v=vs.85).aspx
 func queryRawData(query string) ([]byte, error) {
@@ -192,13 +198,14 @@ func queryRawData(query string) ([]byte, error) {
 
 	switch query {
 	case "Global":
-		bufLen = 400000
+		bufLen = bufLenGlobal
 	case "Costly":
-		bufLen = 2000000
+		bufLen = bufLenCostly
 	default:
 		// TODO: depends on the number of values requested
 		// need make an educated guess
-		bufLen = uint32(150000 * len(query))
+		numCounters := len(strings.Split(query, " "))
+		bufLen = uint32(150000 * numCounters)
 	}
 
 	buffer = make([]byte, bufLen)
@@ -234,6 +241,18 @@ func queryRawData(query string) ([]byte, error) {
 		}
 
 		buffer = buffer[:bufLen]
+
+		switch query {
+		case "Global":
+			if bufLen > bufLenGlobal {
+				bufLenGlobal = bufLen
+			}
+		case "Costly":
+			if bufLen > bufLenCostly {
+				bufLenCostly = bufLen
+			}
+		}
+
 		return buffer, nil
 	}
 }
