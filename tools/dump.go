@@ -4,22 +4,22 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/alecthomas/kingpin"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/leoluk/perflib_exporter/collector"
 	"github.com/leoluk/perflib_exporter/perflib"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 func main() {
 	spew.Dump()
 	var (
-		args       = kingpin.Arg("query",
+		args = kingpin.Arg("query",
 			"Perflib query").Required().Strings()
 		showValues = kingpin.Flag("values",
 			"Show counter values").Short('v').Bool()
-		defsOnly   = kingpin.Flag("defs-only",
+		defsOnly = kingpin.Flag("defs-only",
 			"Show definitions only (no instances) and include Prometheus names").Short('o').Bool()
-		unsorted   = kingpin.Flag("unsorted",
+		unsorted = kingpin.Flag("unsorted",
 			"Do not sort objects").Short('u').Bool()
 	)
 
