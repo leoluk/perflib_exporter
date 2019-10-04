@@ -1,8 +1,14 @@
 # perflib_exporter
 
-**Note:** This is pre-release software. Please test it, 
-but don't rely on it for alerting (yet). The metric names
-and the perflib library interface will probably change.
+The **exporter** is beta-quality software. Please test it, 
+but only use it production if you're ready to read the code.
+The auto-generated metric names are not guaranteed to be stable
+and may change in future releases which improve the mangling logic -
+make sure to read the release notes before you upgrade.
+
+The **perflib library** has an API stability guarantee and is ready for production.
+
+---
 
 perflib_exporter is a Prometheus exporter for Windows system performance. 
 It queries performance data using the low-level HKEY_PERFORMANCE_DATA 
