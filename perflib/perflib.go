@@ -1,3 +1,5 @@
+// +build windows
+
 /*
 	Go bindings for the HKEY_PERFORMANCE_DATA perflib / Performance Counters interface.
 

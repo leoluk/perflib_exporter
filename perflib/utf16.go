@@ -1,8 +1,10 @@
+// +build windows
+
 package perflib
 
 import (
-	"io"
 	"encoding/binary"
+	"io"
 	"syscall"
 )
 

@@ -1,9 +1,11 @@
+// +build windows
+
 package perflib
 
 import (
 	"bytes"
-	"strconv"
 	"fmt"
+	"strconv"
 )
 
 type nameTableLookuper interface {

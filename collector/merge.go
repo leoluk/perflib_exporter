@@ -1,3 +1,5 @@
+// +build windows
+
 package collector
 
 import "fmt"
@@ -5,7 +7,7 @@ import "fmt"
 var mergedDefinitions = map[uint]map[string]map[uint]string{
 	230: {
 		"processor_time_total": {
-			0: "mode",
+			0:   "mode",
 			6:   "",           // Processor Time (drop)
 			142: "user",       // User Time
 			144: "privileged", // Privileged Time
