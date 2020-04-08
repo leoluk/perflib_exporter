@@ -76,7 +76,7 @@ func (c PerflibCollector) Collect(ch chan<- prometheus.Metric) (err error) {
 	for _, object := range objects {
 		n := object.NameIndex
 
-		for _, instance := range object.Instances {
+		for i, instance := range object.Instances {
 			name := instance.Name
 
 			// _Total metrics do not fit into the Prometheus model - we try to merge similar
@@ -128,6 +128,10 @@ func (c PerflibCollector) Collect(ch chan<- prometheus.Metric) (err error) {
 
 				if HasPromotedLabels(n) {
 					labels = append(labels, PromotedLabelValuesForInstance(n, instance)...)
+				}
+
+				if RequiresDuplicateDistinction(object) {
+					labels = append(labels, DuplicateDistinctionLabelValue(instance, i)...)
 				}
 
 				// TODO - Label merging needs to be fixed for [230] Process

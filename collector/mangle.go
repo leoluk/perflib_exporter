@@ -73,6 +73,10 @@ func descFromCounterDef(obj perflib.PerfObject, def perflib.PerfCounterDef) *pro
 		labels = append(labels, PromotedLabelsForObject(obj.NameIndex)...)
 	}
 
+	if RequiresDuplicateDistinction(&obj) {
+		labels = append(labels, DuplicateDistinctionLabel()...)
+	}
+
 	// TODO - Label merging needs to be fixed for [230] Process
 	//if HasMergedLabels(obj.NameIndex) {
 	//	s, labelsForObject := MergedLabelsForInstance(obj.NameIndex, def.NameIndex)

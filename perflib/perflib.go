@@ -153,6 +153,10 @@ type PerfInstance struct {
 	rawCounterBlock *perfCounterBlock
 }
 
+func (p *PerfInstance) UniqueID() uint32 {
+	return p.rawData.UniqueID
+}
+
 type PerfCounterDef struct {
 	Name          string
 	NameIndex     uint
