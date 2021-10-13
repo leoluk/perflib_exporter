@@ -3,8 +3,10 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"google.golang.org/appengine/log"
 	"io"
 	"net/http"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -13,8 +15,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/common/log"
-	"github.com/prometheus/common/version"
 
 	"golang.org/x/sys/windows/svc"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -182,6 +182,8 @@ func main() {
 	authTokens = kingpin.Flag(
 		"telemetry.auth", "List of valid bearer tokens. Defaults to none (no auth)").Strings()
 
+	logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
+	logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 	log.AddFlags(kingpin.CommandLine)
 
 	kingpin.Version(version.Print("perflib_exporter"))
