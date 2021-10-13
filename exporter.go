@@ -254,8 +254,8 @@ loopPerfObjects:
 	http.HandleFunc("/health", healthCheck)
 	http.HandleFunc("/dump", dumpHandler)
 
-	level.Info(logger).Log("msg", "Starting perflib exporter", "version", version.Info())
-	level.Info(logger).Log("msg", "Build context", "context", version.Info())
+	level.Info(logger).Log("msg", "starting perflib exporter", "version", version.Info())
+	level.Info(logger).Log("msg", "build context", "context", version.Info())
 
 	go func() {
 		level.Info(logger).Log("msg", "starting server", "listenAddress", listenAddress)
