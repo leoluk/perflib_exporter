@@ -36,12 +36,12 @@ func NewCounterKey(object *perflib.PerfObject, def *perflib.PerfCounterDef) Coun
 type PerflibCollector struct {
 	perflibQuery string
 	perflibDescs map[CounterKey]*prometheus.Desc
-	log log.Logger
+	logger       log.Logger
 }
 
-func NewPerflibCollector(l log.Logger,query string) (c PerflibCollector) {
+func NewPerflibCollector(l log.Logger, query string) (c PerflibCollector) {
 	c.perflibQuery = query
-	c.log = l
+	c.logger = l
 
 	objects, err := perflib.QueryPerformanceData(c.perflibQuery)
 
@@ -49,7 +49,7 @@ func NewPerflibCollector(l log.Logger,query string) (c PerflibCollector) {
 		panic(err)
 	}
 
-	level.Debug(c.log).Log("Number of objects", len(objects))
+	level.Debug(c.logger).Log("Number of objects", len(objects))
 
 	c.perflibDescs = make(map[CounterKey]*prometheus.Desc)
 
@@ -74,7 +74,7 @@ func (c PerflibCollector) Collect(ch chan<- prometheus.Metric) (err error) {
 		panic(err)
 	}
 
-	level.Debug(c.log).Log("Number of objects", len(objects))
+	level.Debug(c.logger).Log("Number of objects", len(objects))
 
 	for _, object := range objects {
 		n := object.NameIndex
@@ -95,22 +95,22 @@ func (c PerflibCollector) Collect(ch chan<- prometheus.Metric) (err error) {
 				}
 
 				if counter == nil {
-					level.Debug(c.log).Log("msg","nil counter","object", object.Name,"instance", instance.Name)
+					level.Debug(c.logger).Log("msg", "nil counter", "object", object.Name, "instance", instance.Name)
 					continue
 				}
 
 				if counter.Def.NameIndex == 0 {
-					level.Debug(c.log).Log("msg","null counter","object", object.Name,"instance", instance.Name)
+					level.Debug(c.logger).Log("msg", "null counter", "object", object.Name, "instance", instance.Name)
 					continue
 				}
 
 				if counter.Def.Name == "" {
-					level.Debug(c.log).Log("msg","no counter","object", object.Name,"instance", instance.Name)
+					level.Debug(c.logger).Log("msg", "no counter", "object", object.Name, "instance", instance.Name)
 					continue
 				}
 
 				if counter.Def.Name == "No name" {
-					level.Debug(c.log).Log("msg","no name counter","object", object.Name,"instance", instance.Name, "counter", counter.Def.Name)
+					level.Debug(c.logger).Log("msg", "no name counter", "object", object.Name, "instance", instance.Name, "counter", counter.Def.Name)
 					continue
 				}
 
@@ -119,7 +119,7 @@ func (c PerflibCollector) Collect(ch chan<- prometheus.Metric) (err error) {
 				desc, ok := c.perflibDescs[key]
 
 				if !ok {
-					level.Debug(c.log).Log("msg","missing metric description for counter","object", object.Name,"instance", instance.Name, "counter", counter.Def.Name)
+					level.Debug(c.logger).Log("msg", "missing metric description for counter", "object", object.Name, "instance", instance.Name, "counter", counter.Def.Name)
 					continue
 				}
 
@@ -149,7 +149,7 @@ func (c PerflibCollector) Collect(ch chan<- prometheus.Metric) (err error) {
 
 				if err != nil {
 					// TODO - Is this too verbose? There will always be counter types we don't support
-					level.Debug(c.log).Log("err",err)
+					level.Debug(c.logger).Log("err", err)
 					continue
 				}
 
