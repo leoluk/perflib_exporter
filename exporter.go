@@ -2,10 +2,13 @@ package main
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"runtime"
 	"strconv"
@@ -180,16 +183,40 @@ func main() {
 	authTokens = kingpin.Flag(
 		"telemetry.auth", "List of valid bearer tokens. Defaults to none (no auth)").Strings()
 
+	//log.AddFlags(kingpin.CommandLine)
+	loglevel := "debug"
+	logformat := ""
+	kingpin.Flag("log.level", "Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]").
+		Default(loglevel).StringVar(&loglevel)
+	defaultFormat := url.URL{Scheme: "logger", Opaque: "stderr"}
+	kingpin.Flag("log.format", `this is deprecated`).
+		Default(defaultFormat.String()).
+		StringVar(&logformat)
+
+	kingpin.Version(version.Print("perflib_exporter"))
+	kingpin.HelpFlag.Short('h')
+	kingpin.Parse()
+
 	logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
 	logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 
-	//log.AddFlags(kingpin.CommandLine)
+	switch loglevel {
+	case "debug":
+		logger = level.NewFilter(logger, level.AllowDebug())
+	case "info":
+		logger = level.NewFilter(logger, level.AllowInfo())
+	case "warn":
+		logger = level.NewFilter(logger, level.AllowWarn())
+	case "error":
+		logger = level.NewFilter(logger, level.AllowError())
+	case "fatal":
+		logger = level.NewFilter(logger, level.AllowError())
+	default:
+		panic(errors.New(fmt.Sprintf("invalid log level %s", loglevel)))
+	}
+
 	prometheus.MustRegister(version.NewCollector("perflib_exporter"))
 	initMemoryGuard(logger)
-
-	//kingpin.Version(version.Print("perflib_exporter"))
-	kingpin.HelpFlag.Short('h')
-	kingpin.Parse()
 
 	// Prepare perflib queryBuf
 	var queryBuf bytes.Buffer
