@@ -2,13 +2,10 @@ package main
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"runtime"
 	"strconv"
@@ -18,6 +15,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/common/promlog"
 	"github.com/prometheus/common/version"
 
 	"golang.org/x/sys/windows/svc"
@@ -183,37 +181,31 @@ func main() {
 	authTokens = kingpin.Flag(
 		"telemetry.auth", "List of valid bearer tokens. Defaults to none (no auth)").Strings()
 
-	//log.AddFlags(kingpin.CommandLine)
 	loglevel := "debug"
-	logformat := ""
+	logformat := "logfmt"
 	kingpin.Flag("log.level", "Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]").
 		Default(loglevel).StringVar(&loglevel)
-	defaultFormat := url.URL{Scheme: "logger", Opaque: "stderr"}
-	kingpin.Flag("log.format", `this is deprecated`).
-		Default(defaultFormat.String()).
+	kingpin.Flag("log.format", `logfmt or json`).
+		Default(logformat).
 		StringVar(&logformat)
 
 	kingpin.Version(version.Print("perflib_exporter"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
-	logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
-	logger = log.With(logger, "ts", log.DefaultTimestampUTC)
-
-	switch loglevel {
-	case "debug":
-		logger = level.NewFilter(logger, level.AllowDebug())
-	case "info":
-		logger = level.NewFilter(logger, level.AllowInfo())
-	case "warn":
-		logger = level.NewFilter(logger, level.AllowWarn())
-	case "error":
-		logger = level.NewFilter(logger, level.AllowError())
-	case "fatal":
-		logger = level.NewFilter(logger, level.AllowError())
-	default:
-		panic(errors.New(fmt.Sprintf("invalid log level %s", loglevel)))
+	allowedLevel := promlog.AllowedLevel{}
+	if err := allowedLevel.Set(loglevel); err != nil {
+		panic(err)
 	}
+	allowedFormat := promlog.AllowedFormat{}
+	if err := allowedFormat.Set(logformat); err != nil {
+		panic(err)
+	}
+	logconfig := &promlog.Config{
+		Level:  &allowedLevel,
+		Format: &allowedFormat,
+	}
+	logger := promlog.New(logconfig)
 
 	prometheus.MustRegister(version.NewCollector("perflib_exporter"))
 	initMemoryGuard(logger)

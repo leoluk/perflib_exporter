@@ -81,8 +81,8 @@ http://127.0.0.1:9432/dump?query=2
           --log.level="info"        Only log messages with the given severity or
                                     above. Valid levels: [debug, info, warn, error,
                                     fatal]
-          --log.format=""
-                                    Deprecated, exists for backwards compatibility
+          --log.format="logfmt"
+                                    Only supports logfmt (default) or json
           --version                 Show application version.
 
 ## TBD
