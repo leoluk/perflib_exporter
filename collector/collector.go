@@ -49,7 +49,7 @@ func NewPerflibCollector(l log.Logger, query string) (c PerflibCollector) {
 		panic(err)
 	}
 
-	level.Debug(c.logger).Log("Number of objects", len(objects))
+	level.Debug(c.logger).Log("object_count", len(objects))
 
 	c.perflibDescs = make(map[CounterKey]*prometheus.Desc)
 
@@ -74,7 +74,7 @@ func (c PerflibCollector) Collect(ch chan<- prometheus.Metric) (err error) {
 		panic(err)
 	}
 
-	level.Debug(c.logger).Log("Number of objects", len(objects))
+	level.Debug(c.logger).Log("object_count", len(objects))
 
 	for _, object := range objects {
 		n := object.NameIndex
