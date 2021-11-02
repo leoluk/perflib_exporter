@@ -2,9 +2,11 @@ package main
 
 import (
 	"bytes"
-	"fmt"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"io"
 	"net/http"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -13,7 +15,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/common/log"
+	"github.com/prometheus/common/promlog"
 	"github.com/prometheus/common/version"
 
 	"golang.org/x/sys/windows/svc"
@@ -26,6 +28,7 @@ import (
 // PerflibExporter implements the prometheus.Collector interface.
 type PerflibExporter struct {
 	collectors map[string]collector.Collector
+	logger     log.Logger
 }
 
 const (
@@ -62,24 +65,24 @@ func (coll PerflibExporter) Collect(ch chan<- prometheus.Metric) {
 	wg.Add(len(coll.collectors))
 	for name, c := range coll.collectors {
 		go func(name string, c collector.Collector) {
-			execute(name, c, ch)
+			execute(coll.logger, name, c, ch)
 			wg.Done()
 		}(name, c)
 	}
 	wg.Wait()
 }
 
-func execute(name string, c collector.Collector, ch chan<- prometheus.Metric) {
+func execute(logger log.Logger, name string, c collector.Collector, ch chan<- prometheus.Metric) {
 	begin := time.Now()
 	err := c.Collect(ch)
 	duration := time.Since(begin)
 	var success float64
 
 	if err != nil {
-		log.Errorf("ERROR: %s collector failed after %fs: %s", name, duration.Seconds(), err)
+		level.Error(logger).Log("msg", "collector failed", "name", name, "duration", duration, "err", err)
 		success = 0
 	} else {
-		log.Debugf("OK: %s collector succeeded after %fs.", name, duration.Seconds())
+		level.Debug(logger).Log("msg", "collector succeed", "name", name, "duration", duration)
 		success = 1
 	}
 	ch <- prometheus.MustNewConstMetric(
@@ -98,24 +101,20 @@ func execute(name string, c collector.Collector, ch chan<- prometheus.Metric) {
 
 // Make sure we crash instead of consuming inappropriate amounts of memory
 // There's no easy way to set a memory limit on Windows.
-func initMemoryGuard() {
+func initMemoryGuard(l log.Logger) {
 	go func() {
 		for {
 			var m runtime.MemStats
 			runtime.ReadMemStats(&m)
 
 			if m.Alloc > 250000000 { // 250 MB
-				log.Fatalf("CRITICAL: Memory leak detected: %d bytes on heap", m.Alloc)
+				level.Error(l).Log("msg", "CRITICAL: Memory leak detected on heap", "bytes", m.Alloc)
+				os.Exit(1)
 			}
 
 			time.Sleep(5 * time.Second)
 		}
 	}()
-}
-
-func init() {
-	prometheus.MustRegister(version.NewCollector("perflib_exporter"))
-	initMemoryGuard()
 }
 
 // List of perflib objects enabled by default. Each provider maps
@@ -182,11 +181,34 @@ func main() {
 	authTokens = kingpin.Flag(
 		"telemetry.auth", "List of valid bearer tokens. Defaults to none (no auth)").Strings()
 
-	log.AddFlags(kingpin.CommandLine)
+	loglevel := "debug"
+	logformat := "logfmt"
+	kingpin.Flag("log.level", "Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]").
+		Default(loglevel).StringVar(&loglevel)
+	kingpin.Flag("log.format", `logfmt or json`).
+		Default(logformat).
+		StringVar(&logformat)
 
 	kingpin.Version(version.Print("perflib_exporter"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
+
+	allowedLevel := promlog.AllowedLevel{}
+	if err := allowedLevel.Set(loglevel); err != nil {
+		panic(err)
+	}
+	allowedFormat := promlog.AllowedFormat{}
+	if err := allowedFormat.Set(logformat); err != nil {
+		panic(err)
+	}
+	logconfig := &promlog.Config{
+		Level:  &allowedLevel,
+		Format: &allowedFormat,
+	}
+	logger := promlog.New(logconfig)
+
+	prometheus.MustRegister(version.NewCollector("perflib_exporter"))
+	initMemoryGuard(logger)
 
 	// Prepare perflib queryBuf
 	var queryBuf bytes.Buffer
@@ -214,7 +236,7 @@ func main() {
 	*perfObjects = append(*perfObjects, objectNamesToIndices(perfObjectsNamesAdd, objects)...)
 	*perfObjectsRemove = append(*perfObjectsRemove, objectNamesToIndices(perfObjectsNamesRemove, objects)...)
 
-	loopPerfObjects:
+loopPerfObjects:
 	for _, n := range *perfObjects {
 		for _, r := range *perfObjectsRemove {
 			if n == r {
@@ -226,23 +248,24 @@ func main() {
 	}
 
 	defaultQuery = strings.Trim(queryBuf.String(), " ")
-	log.Info("perflib query: ", defaultQuery)
+	level.Info(logger).Log("perflib_query", defaultQuery)
 
 	// Initialize Windows service, if necessary
 	isInteractive, err := svc.IsAnInteractiveSession()
 	if err != nil {
-		log.Fatal(err)
+		level.Error(logger).Log("err", err)
+		os.Exit(1)
 	}
 
 	stopCh := make(chan bool)
 	if !isInteractive {
-		go svc.Run(serviceName, &perflibExporterService{stopCh: stopCh})
+		go svc.Run(serviceName, &perflibExporterService{stopCh: stopCh, logger: logger})
 	}
 
 	// Initialize the exporter
 	nodeCollector := PerflibExporter{collectors: map[string]collector.Collector{
-		"perflib": collector.NewPerflibCollector(defaultQuery),
-	}}
+		"perflib": collector.NewPerflibCollector(logger, defaultQuery),
+	}, logger: logger}
 
 	prometheus.MustRegister(nodeCollector)
 
@@ -250,17 +273,19 @@ func main() {
 	http.HandleFunc("/health", healthCheck)
 	http.HandleFunc("/dump", dumpHandler)
 
-	log.Infoln("Starting perflib exporter", version.Info())
-	log.Infoln("Build context", version.BuildContext())
+	level.Info(logger).Log("msg", "starting perflib exporter", "version", version.Info())
+	level.Info(logger).Log("msg", "build context", "context", version.Info())
 
 	go func() {
-		log.Infoln("Starting server on", *listenAddress)
-		log.Fatalf("cannot start perflib exporter: %s", http.ListenAndServe(*listenAddress, nil))
+		level.Info(logger).Log("msg", "starting server", "listenAddress", listenAddress)
+		level.Info(logger).Log("msg", "starting server", "listenAddress", listenAddress)
+		err := http.ListenAndServe(*listenAddress, nil)
+		level.Error(logger).Log("msg", "cannot start perflib exporter", "err", err)
 	}()
 
 	for {
 		if <-stopCh {
-			log.Info("Shutting down perflib exporter")
+			level.Info(logger).Log("msg", "shutting down perflib exporter")
 			break
 		}
 	}
@@ -268,7 +293,7 @@ func main() {
 
 // objectNamesToIndices converts a slice of perflib object Name values to a slice of perflib NameIndex values
 func objectNamesToIndices(names *[]string, objectDefinitions []*perflib.PerfObject) (indices []uint32) {
-	outerloop:
+outerloop:
 	for _, p := range *names {
 		for _, o := range objectDefinitions {
 			if p == o.Name {
@@ -296,6 +321,7 @@ func keys(m map[string]collector.Collector) []string {
 
 type perflibExporterService struct {
 	stopCh chan<- bool
+	logger log.Logger
 }
 
 func (s *perflibExporterService) Execute(args []string, r <-chan svc.ChangeRequest, changes chan<- svc.Status) (ssec bool, errno uint32) {
@@ -313,7 +339,7 @@ loop:
 				s.stopCh <- true
 				break loop
 			default:
-				log.Error(fmt.Sprintf("unexpected control request #%d", c))
+				level.Error(s.logger).Log("msg", "unexpected control request", "request", c)
 			}
 		}
 	}

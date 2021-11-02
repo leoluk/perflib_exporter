@@ -81,10 +81,8 @@ http://127.0.0.1:9432/dump?query=2
           --log.level="info"        Only log messages with the given severity or
                                     above. Valid levels: [debug, info, warn, error,
                                     fatal]
-          --log.format="logger:stderr"
-                                    Set the log target and format. Example:
-                                    "logger:syslog?appname=bob&local=7" or
-                                    "logger:stdout?json=true"
+          --log.format="logfmt"
+                                    Only supports logfmt (default) or json
           --version                 Show application version.
 
 ## TBD
