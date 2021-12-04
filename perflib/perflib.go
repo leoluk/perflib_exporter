@@ -216,6 +216,8 @@ func queryRawData(query string) ([]byte, error) {
 		return nil, fmt.Errorf("failed to encode query string: %v", err)
 	}
 
+	defer syscall.RegCloseKey(syscall.HKEY_PERFORMANCE_DATA)
+
 	for {
 		bufLen := uint32(len(buffer))
 
@@ -231,6 +233,7 @@ func queryRawData(query string) ([]byte, error) {
 			newBuffer := make([]byte, len(buffer)+16384)
 			copy(newBuffer, buffer)
 			buffer = newBuffer
+			syscall.RegCloseKey(syscall.HKEY_PERFORMANCE_DATA)
 			continue
 		} else if err != nil {
 			if errno, ok := err.(syscall.Errno); ok {
