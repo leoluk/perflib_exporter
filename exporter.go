@@ -2,8 +2,6 @@ package main
 
 import (
 	"bytes"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"io"
 	"net/http"
 	"os"
@@ -12,6 +10,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -251,7 +252,7 @@ loopPerfObjects:
 	level.Info(logger).Log("perflib_query", defaultQuery)
 
 	// Initialize Windows service, if necessary
-	isInteractive, err := svc.IsAnInteractiveSession()
+	isInteractive, err := svc.IsWindowsService()
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		os.Exit(1)
