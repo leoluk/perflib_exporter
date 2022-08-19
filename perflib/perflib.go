@@ -127,6 +127,8 @@ var bo = binary.LittleEndian
 var counterNameTable NameTable
 var helpNameTable NameTable
 
+const averageCount64Type = 1073874176
+
 // Top-level performance object (like "Process").
 type PerfObject struct {
 	Name string
@@ -170,13 +172,15 @@ type PerfCounterDef struct {
 	IsBaseValue bool
 	// PERF_TIMER_100NS
 	IsNanosecondCounter bool
+	HasSecondValue      bool
 
 	rawData *perfCounterDefinition
 }
 
 type PerfCounter struct {
-	Value int64
-	Def   *PerfCounterDef
+	Value       int64
+	Def         *PerfCounterDef
+	SecondValue int64
 }
 
 // Error value returned by RegQueryValueEx if the buffer isn't sufficiently large
@@ -360,6 +364,7 @@ func QueryPerformanceData(query string) ([]*PerfObject, error) {
 				IsCounter:           def.CounterType&0x400 == 0x400,
 				IsBaseValue:         def.CounterType&0x00030000 == 0x00030000,
 				IsNanosecondCounter: def.CounterType&0x00100000 == 0x00100000,
+				HasSecondValue:      def.CounterType == averageCount64Type,
 			}
 		}
 
@@ -415,10 +420,16 @@ func parseCounterBlock(b []byte, r io.ReadSeeker, pos int64, defs []*PerfCounter
 	for i, def := range defs {
 		valueOffset := pos + int64(def.rawData.CounterOffset)
 		value := convertCounterValue(def.rawData, b, valueOffset)
+		secondValue := int64(0)
+
+		if def.HasSecondValue {
+			secondValue = convertCounterValue(def.rawData, b, valueOffset+8)
+		}
 
 		counters[i] = &PerfCounter{
-			Value: value,
-			Def:   def,
+			Value:       value,
+			Def:         def,
+			SecondValue: secondValue,
 		}
 	}
 
