@@ -124,8 +124,8 @@ import (
 // TODO: There's a LittleEndian field in the PERF header - we ought to check it
 var bo = binary.LittleEndian
 
-var counterNameTable NameTable
-var helpNameTable NameTable
+var CounterNameTable NameTable
+var HelpNameTable NameTable
 
 const averageCount64Type = 1073874176
 
@@ -270,8 +270,8 @@ func init() {
 	// Not sure if we should resolve the names at all or just have the caller do it on demand
 	// (for many use cases the index is sufficient)
 
-	counterNameTable = *QueryNameTable("Counter 009")
-	helpNameTable = *QueryNameTable("Help 009")
+	CounterNameTable = *QueryNameTable("Counter 009")
+	HelpNameTable = *QueryNameTable("Help 009")
 }
 
 /*

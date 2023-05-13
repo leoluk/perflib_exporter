@@ -130,11 +130,11 @@ func (p *perfCounterDefinition) BinaryReadFrom(r io.Reader) error {
 }
 
 func (p *perfCounterDefinition) LookupName() string {
-	return counterNameTable.LookupString(p.CounterNameTitleIndex)
+	return CounterNameTable.LookupString(p.CounterNameTitleIndex)
 }
 
 func (p *perfCounterDefinition) LookupHelp() string {
-	return helpNameTable.LookupString(p.CounterHelpTitleIndex)
+	return HelpNameTable.LookupString(p.CounterHelpTitleIndex)
 }
 
 /*
