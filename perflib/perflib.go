@@ -1,112 +1,111 @@
 /*
-	Go bindings for the HKEY_PERFORMANCE_DATA perflib / Performance Counters interface.
+Go bindings for the HKEY_PERFORMANCE_DATA perflib / Performance Counters interface.
 
-	Overview
+# Overview
 
-	HKEY_PERFORMANCE_DATA is a low-level alternative to the higher-level PDH library and WMI.
-	It operates on blocks of counters and only returns raw values without calculating rates
-	or formatting them, which is exactly what you want for, say, a Prometheus exporter
-	(not so much for a GUI like Windows Performance Monitor).
+HKEY_PERFORMANCE_DATA is a low-level alternative to the higher-level PDH library and WMI.
+It operates on blocks of counters and only returns raw values without calculating rates
+or formatting them, which is exactly what you want for, say, a Prometheus exporter
+(not so much for a GUI like Windows Performance Monitor).
 
-	Its overhead is much lower than the high-level libraries.
+Its overhead is much lower than the high-level libraries.
 
-	It operates on the same set of perflib providers as PDH and WMI. See this document
-	for more details on the relationship between the different libraries:
-	https://msdn.microsoft.com/en-us/library/windows/desktop/aa371643(v=vs.85).aspx
+It operates on the same set of perflib providers as PDH and WMI. See this document
+for more details on the relationship between the different libraries:
+https://msdn.microsoft.com/en-us/library/windows/desktop/aa371643(v=vs.85).aspx
 
-	Example C++ source code:
-	https://msdn.microsoft.com/de-de/library/windows/desktop/aa372138(v=vs.85).aspx
+Example C++ source code:
+https://msdn.microsoft.com/de-de/library/windows/desktop/aa372138(v=vs.85).aspx
 
-	For now, the API is not stable and is probably going to change in future
-	perflib_exporter releases. If you want to use this library, send the author an email
-	so we can discuss your requirements and stabilize the API.
+For now, the API is not stable and is probably going to change in future
+perflib_exporter releases. If you want to use this library, send the author an email
+so we can discuss your requirements and stabilize the API.
 
-	Names
+# Names
 
-	Counter names and help texts are resolved by looking up an index in a name table.
-	Since Microsoft loves internalization, both names and help texts can be requested
-	any locally available language.
+Counter names and help texts are resolved by looking up an index in a name table.
+Since Microsoft loves internalization, both names and help texts can be requested
+any locally available language.
 
-	The library automatically loads the name tables and resolves all identifiers
-	in English ("Name" and "HelpText" struct members). You can manually resolve
-	identifiers in a different language by using the NameTable API.
+The library automatically loads the name tables and resolves all identifiers
+in English ("Name" and "HelpText" struct members). You can manually resolve
+identifiers in a different language by using the NameTable API.
 
-	Performance Counters intro
+# Performance Counters intro
 
-	Windows has a system-wide performance counter mechanism. Most performance counters
-	are stored as actual counters, not gauges (with some exceptions).
-	There's additional metadata which defines how the counter should be presented to the user
-	(for example, as a calculated rate). This library disregards all of the display metadata.
+Windows has a system-wide performance counter mechanism. Most performance counters
+are stored as actual counters, not gauges (with some exceptions).
+There's additional metadata which defines how the counter should be presented to the user
+(for example, as a calculated rate). This library disregards all of the display metadata.
 
-	At the top level, there's a number of performance counter objects.
-	Each object has counter definitions, which contain the metadata for a particular
-	counter, and either zero or multiple instances. We hide the fact that there are
-	objects with no instances, and simply return a single null instance.
+At the top level, there's a number of performance counter objects.
+Each object has counter definitions, which contain the metadata for a particular
+counter, and either zero or multiple instances. We hide the fact that there are
+objects with no instances, and simply return a single null instance.
 
-	There's one counter per counter definition and instance (or the object itself, if
-	there are no instances).
+There's one counter per counter definition and instance (or the object itself, if
+there are no instances).
 
-	Behind the scenes, every perflib DLL provides one or more objects.
-	Perflib has a registry where DLLs are dynamically registered and
-	unregistered. Some third party applications like VMWare provide their own counters,
-	but this is, sadly, a rare occurrence.
+Behind the scenes, every perflib DLL provides one or more objects.
+Perflib has a registry where DLLs are dynamically registered and
+unregistered. Some third party applications like VMWare provide their own counters,
+but this is, sadly, a rare occurrence.
 
-	Different Windows releases have different numbers of counters.
+Different Windows releases have different numbers of counters.
 
-	Objects and counters are identified by well-known indices.
+Objects and counters are identified by well-known indices.
 
-	Here's an example object with one instance:
+Here's an example object with one instance:
 
-		4320 WSMan Quota Statistics [7 counters, 1 instance(s)]
-		`-- "WinRMService"
-			`-- Total Requests/Second [4322] = 59
-			`-- User Quota Violations/Second [4324] = 0
-			`-- System Quota Violations/Second [4326] = 0
-			`-- Active Shells [4328] = 0
-			`-- Active Operations [4330] = 0
-			`-- Active Users [4332] = 0
-			`-- Process ID [4334] = 928
+	4320 WSMan Quota Statistics [7 counters, 1 instance(s)]
+	`-- "WinRMService"
+		`-- Total Requests/Second [4322] = 59
+		`-- User Quota Violations/Second [4324] = 0
+		`-- System Quota Violations/Second [4326] = 0
+		`-- Active Shells [4328] = 0
+		`-- Active Operations [4330] = 0
+		`-- Active Users [4332] = 0
+		`-- Process ID [4334] = 928
 
-	All "per second" metrics are counters, the rest are gauges.
+All "per second" metrics are counters, the rest are gauges.
 
-	Another example, with no instance:
+Another example, with no instance:
 
-		4600 Network QoS Policy [6 counters, 1 instance(s)]
-		`-- (default)
-			`-- Packets transmitted [4602] = 1744
-			`-- Packets transmitted/sec [4604] = 4852
-			`-- Bytes transmitted [4606] = 4853
-			`-- Bytes transmitted/sec [4608] = 180388626632
-			`-- Packets dropped [4610] = 0
-			`-- Packets dropped/sec [4612] = 0
+	4600 Network QoS Policy [6 counters, 1 instance(s)]
+	`-- (default)
+		`-- Packets transmitted [4602] = 1744
+		`-- Packets transmitted/sec [4604] = 4852
+		`-- Bytes transmitted [4606] = 4853
+		`-- Bytes transmitted/sec [4608] = 180388626632
+		`-- Packets dropped [4610] = 0
+		`-- Packets dropped/sec [4612] = 0
 
-	You can access the same values using PowerShell's Get-Counter cmdlet
-	or the Performance Monitor.
+You can access the same values using PowerShell's Get-Counter cmdlet
+or the Performance Monitor.
 
-		> Get-Counter '\WSMan Quota Statistics(WinRMService)\Process ID'
+	> Get-Counter '\WSMan Quota Statistics(WinRMService)\Process ID'
 
-		Timestamp                 CounterSamples
-		---------                 --------------
-		1/28/2018 10:18:00 PM     \\DEV\wsman quota statistics(winrmservice)\process id :
-								  928
+	Timestamp                 CounterSamples
+	---------                 --------------
+	1/28/2018 10:18:00 PM     \\DEV\wsman quota statistics(winrmservice)\process id :
+							  928
 
-		>  (Get-Counter '\Process(Idle)\% Processor Time').CounterSamples[0] | Format-List *
-		[..detailed output...]
+	>  (Get-Counter '\Process(Idle)\% Processor Time').CounterSamples[0] | Format-List *
+	[..detailed output...]
 
-	Data for some of the objects is also available through WMI:
+Data for some of the objects is also available through WMI:
 
-		> Get-CimInstance Win32_PerfRawData_Counters_WSManQuotaStatistics
+	> Get-CimInstance Win32_PerfRawData_Counters_WSManQuotaStatistics
 
-		Name                           : WinRMService
-		[...]
-		ActiveOperations               : 0
-		ActiveShells                   : 0
-		ActiveUsers                    : 0
-		ProcessID                      : 928
-		SystemQuotaViolationsPerSecond : 0
-		TotalRequestsPerSecond         : 59
-		UserQuotaViolationsPerSecond   : 0
-
+	Name                           : WinRMService
+	[...]
+	ActiveOperations               : 0
+	ActiveShells                   : 0
+	ActiveUsers                    : 0
+	ProcessID                      : 928
+	SystemQuotaViolationsPerSecond : 0
+	TotalRequestsPerSecond         : 59
+	UserQuotaViolationsPerSecond   : 0
 */
 package perflib
 
@@ -129,7 +128,7 @@ var helpNameTable NameTable
 
 const averageCount64Type = 1073874176
 
-// Top-level performance object (like "Process").
+// PerfObject Top-level performance object (like "Process").
 type PerfObject struct {
 	Name string
 	// Same index you pass to QueryPerformanceData
@@ -144,7 +143,7 @@ type PerfObject struct {
 	rawData *perfObjectType
 }
 
-// Each object can have multiple instances. For example,
+// PerfInstance Each object can have multiple instances. For example,
 // In case the object has no instances, we return one single PerfInstance with an empty name.
 type PerfInstance struct {
 	// *not* resolved using a name table
@@ -191,7 +190,7 @@ var (
 	bufLenCostly = uint32(2000000)
 )
 
-// Queries the performance counter buffer using RegQueryValueEx, returning raw bytes. See:
+// queryRawData Queries the performance counter buffer using RegQueryValueEx, returning raw bytes. See:
 // https://msdn.microsoft.com/de-de/library/windows/desktop/aa373219(v=vs.85).aspx
 func queryRawData(query string) ([]byte, error) {
 	var (
@@ -275,6 +274,7 @@ func init() {
 }
 
 /*
+QueryPerformanceData
 Query all performance counters that match a given query.
 
 The query can be any of the following:
@@ -319,10 +319,16 @@ func QueryPerformanceData(query string) ([]*PerfObject, error) {
 	objOffset := int64(header.HeaderLength)
 
 	for i := 0; i < numObjects; i++ {
-		r.Seek(objOffset, io.SeekStart)
+		_, err := r.Seek(objOffset, io.SeekStart)
+		if err != nil {
+			return nil, err
+		}
 
 		obj := new(perfObjectType)
-		obj.BinaryReadFrom(r)
+		err = obj.BinaryReadFrom(r)
+		if err != nil {
+			return nil, err
+		}
 
 		numCounterDefs := int(obj.NumCounters)
 		numInstances := int(obj.NumInstances)
@@ -350,7 +356,10 @@ func QueryPerformanceData(query string) ([]*PerfObject, error) {
 
 		for i := 0; i < numCounterDefs; i++ {
 			def := new(perfCounterDefinition)
-			def.BinaryReadFrom(r)
+			err := def.BinaryReadFrom(r)
+			if err != nil {
+				return nil, err
+			}
 
 			counterDefs[i] = &PerfCounterDef{
 				Name:          def.LookupName(),
@@ -370,7 +379,10 @@ func QueryPerformanceData(query string) ([]*PerfObject, error) {
 
 		if obj.NumInstances <= 0 {
 			blockOffset := objOffset + int64(obj.DefinitionLength)
-			r.Seek(blockOffset, io.SeekStart)
+			_, err := r.Seek(blockOffset, io.SeekStart)
+			if err != nil {
+				return nil, err
+			}
 
 			_, counters := parseCounterBlock(buffer, r, blockOffset, counterDefs)
 
@@ -384,10 +396,16 @@ func QueryPerformanceData(query string) ([]*PerfObject, error) {
 			instOffset := objOffset + int64(obj.DefinitionLength)
 
 			for i := 0; i < numInstances; i++ {
-				r.Seek(instOffset, io.SeekStart)
+				_, err := r.Seek(instOffset, io.SeekStart)
+				if err != nil {
+					return nil, err
+				}
 
 				inst := new(perfInstanceDefinition)
-				inst.BinaryReadFrom(r)
+				err = inst.BinaryReadFrom(r)
+				if err != nil {
+					return nil, err
+				}
 
 				name, _ := readUTF16StringAtPos(r, instOffset+int64(inst.NameOffset), inst.NameLength)
 				pos := instOffset + int64(inst.ByteLength)
@@ -411,9 +429,15 @@ func QueryPerformanceData(query string) ([]*PerfObject, error) {
 }
 
 func parseCounterBlock(b []byte, r io.ReadSeeker, pos int64, defs []*PerfCounterDef) (int64, []*PerfCounter) {
-	r.Seek(pos, io.SeekStart)
+	_, err := r.Seek(pos, io.SeekStart)
+	if err != nil {
+		return 0, nil
+	}
 	block := new(perfCounterBlock)
-	block.BinaryReadFrom(r)
+	err = block.BinaryReadFrom(r)
+	if err != nil {
+		return 0, nil
+	}
 
 	counters := make([]*PerfCounter, len(defs))
 
@@ -464,7 +488,7 @@ func convertCounterValue(counterDef *perfCounterDefinition, buffer []byte, value
 	return
 }
 
-// Sort slice of objects by index. This is useful for displaying
+// SortObjects Sort slice of objects by index. This is useful for displaying
 // a human-readable list or dump, but unnecessary otherwise.
 func SortObjects(p []*PerfObject) {
 	sort.Slice(p, func(i, j int) bool {

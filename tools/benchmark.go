@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/leoluk/perflib_exporter/perflib"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 type objectTimings struct {

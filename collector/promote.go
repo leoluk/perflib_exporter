@@ -19,12 +19,12 @@ var labelPromotionValues = map[uint][]uint{
 	},
 }
 
-// Get a list of promoted labels for an object
+// PromotedLabelsForObject Get a list of promoted labels for an object
 func PromotedLabelsForObject(index uint) []string {
 	return labelPromotionLabels[index]
 }
 
-// Get a list of label values for a given object and instance
+// PromotedLabelValuesForInstance Get a list of label values for a given object and instance
 func PromotedLabelValuesForInstance(index uint, instance *perflib.PerfInstance) []string {
 	values := make([]string, len(labelPromotionValues[index]))
 
@@ -39,13 +39,13 @@ func PromotedLabelValuesForInstance(index uint, instance *perflib.PerfInstance) 
 	return values
 }
 
-// Return if a given object has label promotion definitions
+// HasPromotedLabels Return if a given object has label promotion definitions
 func HasPromotedLabels(index uint) bool {
 	_, ok := labelPromotionLabels[index]
 	return ok
 }
 
-// Return if a given definition is a promoted label for an object
+// IsDefPromotedLabel Return if a given definition is a promoted label for an object
 func IsDefPromotedLabel(objIndex uint, def uint) bool {
 	for _, v := range labelPromotionValues[objIndex] {
 		if v == def {

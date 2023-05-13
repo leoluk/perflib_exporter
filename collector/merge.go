@@ -5,7 +5,7 @@ import "fmt"
 var mergedDefinitions = map[uint]map[string]map[uint]string{
 	230: {
 		"processor_time_total": {
-			0: "mode",
+			0:   "mode",
 			6:   "",           // Processor Time (drop)
 			142: "user",       // User Time
 			144: "privileged", // Privileged Time
@@ -13,18 +13,18 @@ var mergedDefinitions = map[uint]map[string]map[uint]string{
 	},
 }
 
-// Return if a given object has merge definitions
+// HasMergedLabels Return if a given object has merge definitions
 func HasMergedLabels(index uint) bool {
 	_, ok := mergedDefinitions[index]
 	return ok
 }
 
-// Return a list of merged label names for an instance
+// MergedLabelsForInstance Return a list of merged label names for an instance
 func MergedLabelsForInstance(objIndex uint, def uint) (name string, labelName string) {
 	return MergedMetricForInstance(objIndex, 0)
 }
 
-// Return merged metric name and label value for an instance
+// MergedMetricForInstance Return merged metric name and label value for an instance
 func MergedMetricForInstance(objIndex uint, def uint) (name string, label string) {
 	for k, v := range mergedDefinitions[objIndex] {
 		for n := range v {

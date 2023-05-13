@@ -1,9 +1,9 @@
 package perflib
 
 import (
-	"syscall"
-	"io"
 	"encoding/binary"
+	"io"
+	"syscall"
 )
 
 type binaryReaderFrom interface {

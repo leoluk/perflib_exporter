@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/leoluk/perflib_exporter/collector"
 	"github.com/leoluk/perflib_exporter/perflib"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 func main() {

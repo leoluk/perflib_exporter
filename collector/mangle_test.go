@@ -50,20 +50,20 @@ func ExampleMakePrometheusLabel() {
 		fmt.Printf("%d %s\n", n, names[n])
 	}
 
-/* Output:
-10 file_read_operations_total
-44 processor_queue_length
-94 data_map_hits_total
-206 avg_disk_sec_per_transfer_total
-228 avg_disk_bytes_per_write_total
-388 bytes_total
-1260 logon
-1262 durable_handles
-1350 registry_quota_in_use_total
-1676 free_and_zero_page_list_bytes
-4412 failed_persistent_handle_reopen_count
-4552 response_time_minimum
-4622 resumed_workflow_jobs_total
-*/
+	/* Output:
+	   10 file_read_operations_total
+	   44 processor_queue_length
+	   94 data_map_hits_total
+	   206 avg_disk_sec_per_transfer_total
+	   228 avg_disk_bytes_per_write_total
+	   388 bytes_total
+	   1260 logon
+	   1262 durable_handles
+	   1350 registry_quota_in_use_total
+	   1676 free_and_zero_page_list_bytes
+	   4412 failed_persistent_handle_reopen_count
+	   4552 response_time_minimum
+	   4622 resumed_workflow_jobs_total
+	*/
 
 }

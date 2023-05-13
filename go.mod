@@ -1,13 +1,25 @@
 module github.com/leoluk/perflib_exporter
 
-go 1.16
+go 1.20
 
 require (
+	github.com/alecthomas/kingpin/v2 v2.3.2
 	github.com/davecgh/go-spew v1.1.1
-	github.com/go-kit/log v0.1.0
-	github.com/prometheus/client_golang v1.11.0
-	github.com/prometheus/common v0.31.1
-	golang.org/x/sys v0.0.0-20210603081109-ebe580a85c40
-	google.golang.org/appengine v1.6.6 // indirect
-	gopkg.in/alecthomas/kingpin.v2 v2.2.6
+	github.com/go-kit/log v0.2.1
+	github.com/prometheus/client_golang v1.15.1
+	github.com/prometheus/common v0.44.0
+	golang.org/x/sys v0.8.0
+)
+
+require (
+	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
+	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/cespare/xxhash/v2 v2.2.0 // indirect
+	github.com/go-logfmt/logfmt v0.6.0 // indirect
+	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
+	github.com/prometheus/client_model v0.4.0 // indirect
+	github.com/prometheus/procfs v0.10.1 // indirect
+	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
+	google.golang.org/protobuf v1.30.0 // indirect
 )

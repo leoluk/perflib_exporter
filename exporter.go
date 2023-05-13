@@ -1,3 +1,5 @@
+//go:build windows
+
 package main
 
 import (
@@ -17,10 +19,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/promlog"
+	promlogflag "github.com/prometheus/common/promlog/flag"
 	"github.com/prometheus/common/version"
 
+	"github.com/alecthomas/kingpin/v2"
 	"golang.org/x/sys/windows/svc"
-	"gopkg.in/alecthomas/kingpin.v2"
 
 	"github.com/leoluk/perflib_exporter/collector"
 	"github.com/leoluk/perflib_exporter/perflib"
@@ -182,31 +185,14 @@ func main() {
 	authTokens = kingpin.Flag(
 		"telemetry.auth", "List of valid bearer tokens. Defaults to none (no auth)").Strings()
 
-	loglevel := "debug"
-	logformat := "logfmt"
-	kingpin.Flag("log.level", "Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]").
-		Default(loglevel).StringVar(&loglevel)
-	kingpin.Flag("log.format", `logfmt or json`).
-		Default(logformat).
-		StringVar(&logformat)
+	promLogConfig := &promlog.Config{}
+	promlogflag.AddFlags(kingpin.CommandLine, promLogConfig)
 
 	kingpin.Version(version.Print("perflib_exporter"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
-	allowedLevel := promlog.AllowedLevel{}
-	if err := allowedLevel.Set(loglevel); err != nil {
-		panic(err)
-	}
-	allowedFormat := promlog.AllowedFormat{}
-	if err := allowedFormat.Set(logformat); err != nil {
-		panic(err)
-	}
-	logconfig := &promlog.Config{
-		Level:  &allowedLevel,
-		Format: &allowedFormat,
-	}
-	logger := promlog.New(logconfig)
+	logger := promlog.New(promLogConfig)
 
 	prometheus.MustRegister(version.NewCollector("perflib_exporter"))
 	initMemoryGuard(logger)

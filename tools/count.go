@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"strings"
-	"os"
 	"log"
+	"os"
+	"strings"
 
 	"github.com/leoluk/perflib_exporter/perflib"
 )
