@@ -12,11 +12,11 @@ type nameTableLookuper interface {
 }
 
 func (p *perfObjectType) LookupName() string {
-	return counterNameTable.LookupString(p.ObjectNameTitleIndex)
+	return CounterNameTable.LookupString(p.ObjectNameTitleIndex)
 }
 
 func (p *perfObjectType) LookupHelp() string {
-	return helpNameTable.LookupString(p.ObjectHelpTitleIndex)
+	return HelpNameTable.LookupString(p.ObjectHelpTitleIndex)
 }
 
 type NameTable struct {
